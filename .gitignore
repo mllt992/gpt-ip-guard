@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+build/
+*.log
+gpt-ip-guard-usage.db
+usage-imported.flag
+GPT-IP-Guard.log

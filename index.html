@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPT IP Guard</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">🛡</div>
+        <div>
+          <h1>GPT IP Guard</h1>
+          <p class="sub">代理出口监控 · 防误开 GPT 封号</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-refresh" class="btn ghost" title="刷新出口 IP">⟳ 刷新</button>
+        <button id="btn-settings" class="btn ghost" title="设置">⚙</button>
+      </div>
+    </header>
+
+    <!-- 主状态横幅 -->
+    <section id="status-banner" class="status-banner pending">
+      <div class="status-icon" id="status-icon">…</div>
+      <div class="status-text">
+        <h2 id="status-title">正在检测出口 IP…</h2>
+        <p id="status-desc">请稍候，正在查询国内外出口地址</p>
+      </div>
+      <div class="status-pill" id="status-pill">检测中</div>
+    </section>
+
+    <!-- IP 卡片 -->
+    <section class="ip-grid">
+      <article class="ip-card" id="card-domestic">
+        <div class="ip-label">🏠 国内出口 IP</div>
+        <div class="ip-value" id="ip-domestic">--</div>
+        <div class="ip-meta" id="meta-domestic">查询中…</div>
+      </article>
+      <article class="ip-card" id="card-foreign">
+        <div class="ip-label">🌍 海外出口 IP</div>
+        <div class="ip-value" id="ip-foreign">--</div>
+        <div class="ip-meta" id="meta-foreign">查询中…</div>
+      </article>
+      <article class="ip-card" id="card-current">
+        <div class="ip-label">📍 当前出口 IP</div>
+        <div class="ip-value" id="ip-current">--</div>
+        <div class="ip-meta" id="meta-current">查询中…</div>
+      </article>
+    </section>
+
+    <!-- 国家检测条 -->
+    <section class="country-bar">
+      <div class="country-row">
+        <span class="country-label">海外出口国家 / 地区</span>
+        <span class="country-value" id="country-value">--</span>
+      </div>
+      <div class="country-row">
+        <span class="country-label">是否美国出口</span>
+        <span class="country-flag" id="us-flag">--</span>
+      </div>
+    </section>
+
+    <!-- 启动 GPT -->
+    <section class="launch-section" id="launch-section">
+      <h3>启动 ChatGPT</h3>
+      <p class="launch-hint" id="launch-hint">海外出口为美国时可安全启动</p>
+      <div class="launch-btns">
+        <button id="btn-launch-client" class="btn primary large" disabled>
+          <span class="btn-icon">💻</span> 启动客户端
+        </button>
+        <button id="btn-launch-web" class="btn primary large" disabled>
+          <span class="btn-icon">🌐</span> 启动网页
+        </button>
+      </div>
+    </section>
+
+    <!-- 安全开关 -->
+    <section class="guard-section">
+      <div class="guard-card">
+        <div class="guard-info">
+          <div class="guard-title">🔒 强制守护模式</div>
+          <p class="guard-desc">开启后：检测到 ChatGPT 客户端且海外出口不是美国时，立即强制结束进程</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-guard" />
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="guard-card">
+        <div class="guard-info">
+          <div class="guard-title">🚫 网站拦截</div>
+          <p class="guard-desc">非美国出口时通过 hosts 拦截 chatgpt.com / openai.com</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-block" checked />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- 日志 -->
+    <section class="log-section">
+      <div class="log-header">
+        <h3>运行日志</h3>
+        <button id="btn-clear-log" class="btn ghost sm">清空</button>
+      </div>
+      <div class="log-box" id="log-box">
+        <div class="log-line info">[系统] GPT IP Guard 已启动</div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span id="footer-status">自动检测间隔 30 秒</span>
+      <span>v1.0</span>
+    </footer>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
