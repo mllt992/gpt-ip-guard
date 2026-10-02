@@ -92,7 +92,8 @@ def totals(days: Optional[int] = None) -> dict:
             "output_tokens": row["outp"],
             "cache_tokens": row["cache"],
             "count": row["n"],
-            "total_tokens": row["inp"] + row["outp"] + row["cache"],
+            # cache is a subset of input; true spend = input + output
+            "total_tokens": row["inp"] + row["outp"],
         }
 
 

@@ -208,7 +208,7 @@ class App:
             try:
                 if usage.totals().get("count", 0) == 0:
                     if importer.ensure_imported():
-                        self.root.after(0, lambda: self._append("已导入本机真实用量数据", "ok"))
+                        self.root.after(0, lambda: self._append("已自动同步本机真实 token 用量", "ok"))
                         self.root.after(50, self._refresh_usage_ui)
             except Exception as e:
                 flog(f"boot import {e}")
@@ -408,20 +408,20 @@ class App:
         self._switch_row(parent, "强制守护", "非美国出口自动结束 ChatGPT", "guard", False)
         self._switch_row(parent, "网站拦截", "非美国时拦截 chatgpt / openai", "block", True)
 
-        # log
+        # log — full height, readable
         lg = tk.Frame(parent, bg=CARD, highlightbackground=LINE, highlightthickness=1)
         lg.pack(fill="both", expand=True, pady=(6, 8))
         top = tk.Frame(lg, bg=CARD)
-        top.pack(fill="x", padx=8, pady=(6, 2))
-        tk.Label(top, text="日志", font=FONT_B, bg=CARD, fg=INK).pack(side="left")
+        top.pack(fill="x", padx=8, pady=(8, 4))
+        tk.Label(top, text="运行日志", font=FONT_B, bg=CARD, fg=INK).pack(side="left")
         tk.Button(
             top, text="清空", font=FONT_S, command=self._clear_log, bg=CARD, fg=DIM,
             relief="flat", padx=6, pady=1, cursor="hand2", highlightbackground=LINE, highlightthickness=1,
         ).pack(side="right")
         self.log = tk.Text(
-            lg, height=5, bg="#F8FAFC", fg=INK, relief="flat", font=("Consolas", 8),
+            lg, height=8, bg="#F8FAFC", fg=INK, relief="flat", font=("Consolas", 9),
             wrap="word", state="disabled", highlightbackground=LINE, highlightthickness=1,
-            padx=6, pady=4,
+            padx=8, pady=6, spacing1=1, spacing3=1,
         )
         self.log.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         self.log.tag_configure("info", foreground="#0369A1")
@@ -457,7 +457,7 @@ class App:
         for key, title, color in [
             ("input", "输入", ACCENT),
             ("output", "输出", PURPLE),
-            ("cache", "缓存", ORANGE),
+            ("cache", "缓存(含)", ORANGE),
             ("total", "合计", SAFE),
         ]:
             card = tk.Frame(kpi, bg=CARD, highlightbackground=LINE, highlightthickness=1)
@@ -714,14 +714,14 @@ class App:
                     c.create_oval(x_at(i) - 3, y - 3, x_at(i) + 3, y + 3, fill=color, outline=color)
 
     def _import_local(self):
-        self._append("正在导入本机 Codex/ChatGPT 真实用量…", "info")
+        self._append("正在同步本机 ChatGPT token 用量…", "info")
 
         def work():
             try:
-                r = importer.import_local_usage(clear_first=True)
-                msg = f"已导入 {r['imported']} 条真实记录"
+                r = importer.sync_usage(True)
+                msg = f"已同步 {r['records']} 条真实用量（按 response 去重）"
             except Exception as e:
-                msg = f"导入失败: {e}"
+                msg = f"同步失败: {e}"
             self.root.after(0, lambda: self._append(msg, "ok"))
             self.root.after(30, self._refresh_usage_ui)
 
