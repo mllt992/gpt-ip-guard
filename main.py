@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ctypes
 import datetime as dt
+import json
 import sys
 import threading
 import time
@@ -200,7 +201,8 @@ class App:
         self.tray = None
         self.full_ips = {"domestic": "", "foreign": "", "current": ""}
         self.mask_on = True
-        self.range_days = 7  # 7 / 30 / 0(all)
+        self.range_days = 30  # 7 / 30 / 0(all)
+        self.detect_interval = self._load_interval()  # seconds, default 300
 
         usage.init_db()
         # first-run: import real local Codex token usage
@@ -224,7 +226,35 @@ class App:
         self._workers()
         self.root.after(400, self._refresh_usage_ui)
         self.root.after(900, self._refresh_usage_ui)  # redraw chart after layout
-        self._append("就绪 · 60s 自动检测", "info")
+        self._append(f"就绪 · 自动检测 {self.detect_interval // 60} 分钟一轮", "info")
+
+    def _config_path(self) -> Path:
+        try:
+            if getattr(sys, "frozen", False):
+                return Path(sys.executable).parent / "gpt-ip-guard-config.json"
+        except Exception:
+            pass
+        return Path(__file__).resolve().parent / "gpt-ip-guard-config.json"
+
+    def _load_interval(self) -> int:
+        default = 300
+        try:
+            data = json.loads(self._config_path().read_text(encoding="utf-8"))
+            sec = int(data.get("detect_interval_sec", default))
+            return min(max(sec, 60), 3600)
+        except Exception:
+            return default
+
+    def _save_interval(self, sec: int):
+        try:
+            p = self._config_path()
+            data = {}
+            if p.is_file():
+                data = json.loads(p.read_text(encoding="utf-8"))
+            data["detect_interval_sec"] = int(sec)
+            p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            flog(f"save interval {e}")
 
     # ---------- tray ----------
     def _init_tray(self):
@@ -298,6 +328,13 @@ class App:
             bg=CARD, fg=ACCENT, relief="flat", padx=8, pady=2, cursor="hand2",
             highlightbackground=LINE, highlightthickness=1,
         ).pack(side="left", padx=(0, 4))
+        # interval: 1/3/5/10 min
+        tk.Label(right, text="间隔", font=FONT_S, bg=BG, fg=DIM).pack(side="left", padx=(2, 2))
+        self.interval_var = tk.StringVar(value=f"{self.detect_interval // 60}")
+        combo = tk.OptionMenu(right, self.interval_var, "1", "3", "5", "10", command=self._on_interval)
+        combo.configure(font=FONT_S, width=2, highlightthickness=0, relief="flat", bg=CARD)
+        combo.pack(side="left", padx=(0, 6))
+        tk.Label(right, text="分", font=FONT_S, bg=BG, fg=DIM).pack(side="left", padx=(0, 6))
         self.auto_var = tk.BooleanVar(value=is_autostart())
         tk.Checkbutton(
             right, text="开机自启", variable=self.auto_var, font=FONT_S, bg=BG,
@@ -483,7 +520,7 @@ class App:
         bot = tk.Frame(parent, bg=BG)
         bot.pack(fill="x", pady=(2, 8))
         tk.Button(
-            bot, text="刷新统计", font=FONT_S, command=self._refresh_usage_ui,
+            bot, text="刷新统计", font=FONT_S, command=self._refresh_usage_manual,
             bg=CARD, fg=INK, relief="flat", padx=8, pady=3, cursor="hand2",
             highlightbackground=LINE, highlightthickness=1,
         ).pack(side="left")
@@ -603,6 +640,7 @@ class App:
             return
         self.detecting = True
         self.result_box = None
+        self._last_detect_ts = time.time()
         self._set_status("info", "正在检测出口…", "请稍候 1–6 秒", "…")
 
         def worker():
@@ -642,6 +680,21 @@ class App:
         self.root.after(150, self._poll_result)
 
     # ---------- usage ----------
+    def _refresh_usage_manual(self):
+        """Manual refresh: re-sync from local logs then redraw."""
+        self._append("正在刷新用量统计…", "info")
+
+        def work():
+            try:
+                r = importer.sync_usage(True)
+                msg = f"用量已刷新：{r['records']} 条响应"
+            except Exception as e:
+                msg = f"用量刷新失败: {e}"
+            self.root.after(0, lambda: self._append(msg, "ok"))
+            self.root.after(30, self._refresh_usage_ui)
+
+        threading.Thread(target=work, daemon=True).start()
+
     def _on_range(self):
         self.range_days = int(self.range_var.get())
         self._refresh_usage_ui()
@@ -777,6 +830,15 @@ class App:
             self._append("用量数据已清空", "warn")
 
     # ---------- actions ----------
+    def _on_interval(self, value: str):
+        try:
+            minutes = int(value)
+        except Exception:
+            minutes = 5
+        self.detect_interval = max(60, minutes * 60)
+        self._save_interval(self.detect_interval)
+        self._append(f"检测间隔已设为 {minutes} 分钟", "info")
+
     def _toggle_autostart(self):
         want = self.auto_var.get()
         ok = set_autostart(want)
@@ -848,11 +910,17 @@ class App:
 
         def auto():
             while True:
-                time.sleep(60)
-                self.root.after(0, self._start_detect)
+                # wake often, fire when interval elapsed
+                time.sleep(min(30, max(5, self.detect_interval)))
+                self.root.after(0, self._maybe_auto_detect)
 
         threading.Thread(target=guard, daemon=True).start()
         threading.Thread(target=auto, daemon=True).start()
+        self._last_detect_ts = time.time()
+
+    def _maybe_auto_detect(self):
+        if time.time() - getattr(self, "_last_detect_ts", 0) >= self.detect_interval - 1:
+            self._start_detect()
 
 
 def main():
